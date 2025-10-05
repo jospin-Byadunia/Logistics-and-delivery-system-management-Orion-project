@@ -32,7 +32,6 @@ Key goals:
 ## Technologies Used
 - **Backend:** Pyhton, Django  
 - **Database:** MySQL   
-- **Frontend (if applicable):** React.js / HTML, CSS, JavaScript  
 - **Authentication:** JWT, bcrypt  
 - **Other Tools:** Postman (API testing), Git (version control)
 
