@@ -1,0 +1,10 @@
+#ignore environment variables file
+.env
+#ignore django migrations
+*/migrations/*.py
+*/migrations/*.pyc
+!*/migrations/__init__.py
+#ignore environment specific files
+*.local.py
+venv/
+env/
