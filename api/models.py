@@ -3,6 +3,10 @@ from django.db import models
 from django.conf import settings
 
 class User(AbstractUser):
+    email = models.EmailField(unique=True)
+
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['username']
     # Define role choices
     ADMIN = 'ADMIN'
     DRIVER = 'DRIVER'

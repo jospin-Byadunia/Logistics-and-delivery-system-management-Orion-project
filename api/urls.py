@@ -5,8 +5,9 @@ from .views import (
     DeliveryRequestViewSet,
     AssignmentViewSet,
     PaymentViewSet,
-    TrackingViewSet
+    TrackingViewSet, RegisterViewSet, LogoutView, ForgotPasswordView, CustomTokenObtainPairView
 )
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
@@ -17,4 +18,9 @@ router.register(r'tracking', TrackingViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('register/',RegisterViewSet.as_view(), name='register'),
+    path('login/', CustomTokenObtainPairView.as_view(), name='login'),
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('logout/', LogoutView.as_view(), name='logout'),
+    path('forgot-password/', ForgotPasswordView.as_view(), name='forgot_password'),
 ]
