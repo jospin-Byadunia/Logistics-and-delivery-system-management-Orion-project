@@ -1,5 +1,5 @@
 from rest_framework import viewsets, permissions
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from django.utils.crypto import get_random_string
 from rest_framework import generics
 from rest_framework.views import APIView
@@ -17,6 +17,8 @@ from .serializers import (
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.mail import send_mail
+from django.shortcuts import get_object_or_404
+from rest_framework.decorators import action
 
 
 User = get_user_model()
@@ -61,7 +63,111 @@ class DeliveryRequestViewSet(viewsets.ModelViewSet):
 class AssignmentViewSet(viewsets.ModelViewSet):
     queryset = Assignment.objects.all()
     serializer_class = AssignmentSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]
+
+    @action(
+        detail=True,
+        methods=['patch'],
+        url_path='accept',
+        permission_classes=[IsAuthenticated]
+    )
+    def accept(self, request, pk=None):
+        assignment = get_object_or_404(Assignment, pk=pk, driver=request.user)
+        assignment.status = Assignment.ACCEPTED
+        assignment.save()
+
+        # Update delivery request status
+        assignment.delivery_request.status = DeliveryRequest.IN_PROGRESS
+        assignment.delivery_request.save()
+
+        return Response({'detail': 'Assignment accepted successfully.'})
+
+    @action(
+        detail=True,
+        methods=['patch'],
+        url_path='reject',
+        permission_classes=[IsAuthenticated]
+    )
+    def reject(self, request, pk=None):
+        assignment = get_object_or_404(Assignment, pk=pk, driver=request.user)
+
+        reason = request.data.get('reason')
+        if not reason:
+            return Response({'detail': 'Rejection reason is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Mark assignment as rejected
+        assignment.status = Assignment.REJECTED
+        assignment.rejection_reason = reason
+        assignment.save()
+
+        # Set delivery back to pending so it can be reassigned
+        delivery = assignment.delivery_request
+        delivery.status = DeliveryRequest.PENDING
+        delivery.save()
+
+        return Response({'detail': 'Assignment rejected successfully. Delivery is now available for reassignment.'})
+
+    @action(
+        detail=False,
+        methods=['post'],
+        url_path=r'(?P<pk>\d+)/assign',
+        permission_classes=[IsAdminUser]
+    )
+    def assign_driver(self, request, pk=None):
+        """Admin manually assigns a driver to a delivery request."""
+        delivery = get_object_or_404(DeliveryRequest, pk=pk)
+
+        # Check if delivery is available for assignment
+        if delivery.status not in [DeliveryRequest.PENDING, DeliveryRequest.CANCELLED]:
+            return Response({'detail': 'This delivery is not available for assignment.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        driver_id = request.data.get('driver_id')
+        if not driver_id:
+            return Response({'detail': 'Driver ID is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create assignment
+        assignment = Assignment.objects.create(
+            delivery_request=delivery,
+            driver_id=driver_id
+        )
+
+        delivery.status = DeliveryRequest.ASSIGNED
+        delivery.save()
+
+        return Response(AssignmentSerializer(assignment).data, status=status.HTTP_201_CREATED)
+    @action(
+    detail=True,
+    methods=['patch'],
+    url_path='complete',
+    permission_classes=[IsAuthenticated]
+)
+    def complete(self, request, pk=None):
+        """
+        Driver marks the delivery as completed.
+        """
+        assignment = get_object_or_404(Assignment, pk=pk)
+
+        # Only the assigned driver can complete
+        if request.user != assignment.driver:
+            return Response({'detail': 'You are not authorized to complete this assignment.'},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        # Only accepted assignments can be completed
+        if assignment.status != Assignment.ACCEPTED:
+            return Response({'detail': 'Only accepted assignments can be completed.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Update assignment status
+        assignment.status = Assignment.ACCEPTED  # keep as accepted or optionally create COMPLETED in Assignment
+        assignment.save()
+
+        # Update delivery request status
+        delivery = assignment.delivery_request
+        delivery.status = DeliveryRequest.COMPLETED
+        delivery.save()
+
+        return Response({'detail': 'Delivery marked as completed successfully.'}, status=status.HTTP_200_OK)
 
 
 # --------------------
@@ -70,7 +176,58 @@ class AssignmentViewSet(viewsets.ModelViewSet):
 class PaymentViewSet(viewsets.ModelViewSet):
     queryset = Payment.objects.all()
     serializer_class = PaymentSerializer
-    permission_classes = [permissions.IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        delivery_request_id = request.data.get('delivery_request')
+        payment_method = request.data.get('payment_method')
+
+        try:
+            delivery_request = DeliveryRequest.objects.get(id=delivery_request_id)
+        except DeliveryRequest.DoesNotExist:
+            return Response({'error': 'Delivery request not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        amount = delivery_request.price
+        if amount is None:
+            return Response({'error': 'Delivery request price is not set'}, status=status.HTTP_400_BAD_REQUEST)
+
+        payment = Payment.objects.create(
+            delivery_request=delivery_request,
+            amount=amount,
+            payment_method=payment_method,
+        )
+
+        if payment_method in [Payment.CARD, Payment.MOBILE_MONEY]:
+            # Here you integrate with Flutterwave or other payment API
+            # Example: get payment link and return
+            payment_link = f"https://pay.example.com/{payment.id}"  # placeholder
+            return Response({'payment_id': payment.id, 'payment_link': payment_link})
+
+        # Pay on delivery option
+        return Response({'payment_id': payment.id, 'message': 'Payment will be collected on delivery'})
+
+    def update_status(self, request, pk=None):
+        """ Endpoint to update payment status after webhook """
+        try:
+            payment = Payment.objects.get(pk=pk)
+        except Payment.DoesNotExist:
+            return Response({'error': 'Payment not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        status_ = request.data.get('status')
+        transaction_id = request.data.get('transaction_id')
+        if status_ not in [Payment.PENDING, Payment.SUCCESS, Payment.FAILED]:
+            return Response({'error': 'Invalid status'}, status=status.HTTP_400_BAD_REQUEST)
+
+        payment.status = status_
+        if transaction_id:
+            payment.transaction_id = transaction_id
+        payment.save()
+
+        # Mark delivery request as paid if successful
+        if status_ == Payment.SUCCESS:
+            payment.delivery_request.is_paid = True
+            payment.delivery_request.save()
+
+        return Response({'message': 'Payment status updated'})
 
 
 # --------------------

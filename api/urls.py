@@ -12,7 +12,6 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
 router.register(r'delivery-requests', DeliveryRequestViewSet)
-router.register(r'assignments', AssignmentViewSet)
 router.register(r'payments', PaymentViewSet)
 router.register(r'tracking', TrackingViewSet)
 
@@ -23,4 +22,9 @@ urlpatterns = [
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('logout/', LogoutView.as_view(), name='logout'),
     path('forgot-password/', ForgotPasswordView.as_view(), name='forgot_password'),
+     # Custom routes for assignment actions
+    path('deliveries/<int:pk>/assign/', AssignmentViewSet.as_view({'post': 'assign_driver'}), name='assign-driver'),
+    path('assignments/<int:pk>/accept/', AssignmentViewSet.as_view({'patch': 'accept'}), name='accept-assignment'),
+    path('assignments/<int:pk>/reject/', AssignmentViewSet.as_view({'patch': 'reject'}), name='reject-assignment'),
+    path('assignments/<int:pk>/complete/', AssignmentViewSet.as_view({'patch': 'complete'}), name='complete-assignment'),
 ]

@@ -1,6 +1,8 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.conf import settings
+from geopy.distance import geodesic
+
 
 class User(AbstractUser):
     email = models.EmailField(unique=True)
@@ -65,7 +67,8 @@ class DeliveryRequest(models.Model):
     dropoff_lng = models.FloatField()
     
     distance_km = models.FloatField(blank=True, null=True)
-    price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    is_paid = models.BooleanField(default=False)
     
     status = models.CharField(
         max_length=15,
@@ -76,15 +79,33 @@ class DeliveryRequest(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    def save(self, *args, **kwargs):
+        if self.pickup_lat and self.pickup_lng and self.dropoff_lat and self.dropoff_lng:
+            pickup = (self.pickup_lat, self.pickup_lng)
+            dropoff = (self.dropoff_lat, self.dropoff_lng)
+            self.distance_km = geodesic(pickup, dropoff).km
+            self.price = round(self.distance_km * 1.5, 2)
+        super().save(*args, **kwargs)
+    
     def __str__(self):
         return f"DeliveryRequest #{self.id} - {self.customer.username} ({self.status})"
 
 
 class Assignment(models.Model):
+    ASSIGNED = 'ASSIGNED'
+    ACCEPTED = 'ACCEPTED'
+    REJECTED = 'REJECTED'
+
+    STATUS_CHOICES = [
+        (ASSIGNED, 'Assigned'),
+        (ACCEPTED, 'Accepted'),
+        (REJECTED, 'Rejected'),
+    ]
+
     driver = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        limit_choices_to={'role': 'DRIVER'},  # Ensures only drivers can be assigned
+        limit_choices_to={'role': 'DRIVER'},
         related_name='assignments'
     )
 
@@ -95,7 +116,8 @@ class Assignment(models.Model):
     )
 
     assigned_at = models.DateTimeField(auto_now_add=True)
-    accepted = models.BooleanField(default=False)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=ASSIGNED)
+    rejection_reason = models.TextField(null=True, blank=True)
 
     def __str__(self):
         return f"Assignment #{self.id} - Driver: {self.driver.username} for DeliveryRequest #{self.delivery_request.id}"

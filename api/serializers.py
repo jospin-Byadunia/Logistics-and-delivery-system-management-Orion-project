@@ -58,30 +58,29 @@ class DeliveryRequestSerializer(serializers.ModelSerializer):
 # Assignment Serializer
 # --------------------
 class AssignmentSerializer(serializers.ModelSerializer):
-    driver = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.filter(role=User.DRIVER)
-    )
-    delivery_request = serializers.PrimaryKeyRelatedField(queryset=DeliveryRequest.objects.all())
+    driver_name = serializers.CharField(source='driver.username', read_only=True)
+    delivery_request_id = serializers.IntegerField(source='delivery_request.id', read_only=True)
 
     class Meta:
         model = Assignment
-        fields = ['id', 'driver', 'delivery_request', 'assigned_at', 'accepted']
-        read_only_fields = ['id', 'assigned_at']
-
+        fields = [
+            'id', 'driver', 'driver_name', 'delivery_request', 'delivery_request_id',
+            'assigned_at', 'status', 'rejection_reason'
+        ]
+        read_only_fields = ['assigned_at', 'status', 'rejection_reason']
 
 # --------------------
 # Payment Serializer
 # --------------------
 class PaymentSerializer(serializers.ModelSerializer):
-    delivery_request = serializers.PrimaryKeyRelatedField(queryset=DeliveryRequest.objects.all())
-
     class Meta:
         model = Payment
-        fields = [
-            'id', 'delivery_request', 'amount', 'currency',
-            'payment_method', 'transaction_id', 'status', 'created_at'
-        ]
-        read_only_fields = ['id', 'created_at', 'status', 'transaction_id']
+        fields = ['id', 'delivery_request', 'amount', 'currency', 'payment_method', 'transaction_id', 'status', 'created_at']
+        read_only_fields = ['id', 'status', 'transaction_id', 'created_at']
+
+    def create(self, validated_data):
+        payment = Payment.objects.create(**validated_data)
+        return payment
 
 
 # --------------------
@@ -111,7 +110,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('email', 'username', 'password', 'password2')
+        fields = ('email', 'username', 'password', 'password2','role', 'phone_number', 'address', 'vehicle_number')
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:
