@@ -1,5 +1,6 @@
 from rest_framework import viewsets, permissions
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
+from rest_framework.exceptions import PermissionDenied
 from django.utils.crypto import get_random_string
 from rest_framework import generics
 from rest_framework.views import APIView
@@ -19,6 +20,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import action
+from api.utils.permissions import DeliveryRequestPermission
 
 
 User = get_user_model()
@@ -50,11 +52,37 @@ class UserViewSet(viewsets.ModelViewSet):
 class DeliveryRequestViewSet(viewsets.ModelViewSet):
     queryset = DeliveryRequest.objects.all()
     serializer_class = DeliveryRequestSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, DeliveryRequestPermission]
+    
+    def get_queryset(self):
+        user = self.request.user
+
+        # Admins can see all delivery requests
+        if user.role == 'ADMIN':
+            return DeliveryRequest.objects.all()
+
+        # Customers can only see their own delivery requests
+        elif user.role == 'CUSTOMER':
+            return DeliveryRequest.objects.filter(customer=user)
+
+        # Drivers can only see delivery requests assigned to them
+        elif user.role == 'DRIVER':
+            assigned_requests = Assignment.objects.filter(driver=user).values_list('delivery_request_id', flat=True)
+            return DeliveryRequest.objects.filter(id__in=assigned_requests)
+
+        # If none of the above (shouldn’t happen)
+        return DeliveryRequest.objects.none()
 
     def perform_create(self, serializer):
-        # Automatically assign the logged-in user as the customer
-        serializer.save(customer=self.request.user)
+        user = self.request.user
+        if user.role != 'CUSTOMER':
+            raise PermissionDenied("Only customers can create delivery requests.")
+        serializer.save(customer=user)
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
 
 
 # --------------------

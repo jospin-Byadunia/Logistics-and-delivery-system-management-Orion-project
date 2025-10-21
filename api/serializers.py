@@ -51,7 +51,12 @@ class DeliveryRequestSerializer(serializers.ModelSerializer):
             'pickup_lat', 'pickup_lng', 'dropoff_lat', 'dropoff_lng',
             'distance_km', 'price', 'status', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'distance_km', 'price', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'distance_km', 'price', 'created_at', 'updated_at', 'customer']
+    # def create(self, validated_data):
+    #     request = self.context.get('request')
+    #     if request and hasattr(request, 'user'):
+    #         validated_data['customer'] = request.user
+    #     return super().create(validated_data)
 
 
 # --------------------
