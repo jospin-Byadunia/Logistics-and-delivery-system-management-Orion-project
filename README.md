@@ -8,17 +8,11 @@ This project streamlines order creation, assignment, delivery tracking, and paym
 ## 📖 Table of Contents
 - [Overview](#-overview)
 - [Key Features](#-key-features)
-- [Architecture](#-architecture)
 - [Tech Stack](#-tech-stack)
 - [Core Models](#-core-models)
-- [Business Logic](#-business-logic)
 - [Installation & Setup](#-installation--setup)
-- [Environment Variables](#-environment-variables)
 - [API Endpoints](#-api-endpoints)
-- [Development Roadmap](#-development-roadmap)
-- [Future Improvements](#-future-improvements)
-- [License](#-license)
-- [Author](#-author)
+
 
 ---
 
