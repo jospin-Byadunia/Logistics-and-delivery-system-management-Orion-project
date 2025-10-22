@@ -106,7 +106,7 @@ Handles all payment records, method type, status, and linkage to deliveries.
 
 ---
 
-## 🧾 API Endpoints (Sample)
+## 🧾 API Endpoints
 
 Below is an overview of key API routes for the Logistics and Delivery System.  
 All endpoints are prefixed with `/api/` and secured using **JWT authentication** where applicable.
