@@ -75,7 +75,28 @@ class DeliveryRequest(models.Model):
         choices=STATUS_CHOICES,
         default=PENDING
     )
-    
+    HOUSEHOLD_ITEMS = 'HOUSEHOLD_ITEMS'
+    OFFICE_EQUIPMENT = 'OFFICE_EQUIPMENT'
+    PARCEL = 'PARCEL'
+    FRAGILE = 'FRAGILE'
+    FOOD = 'FOOD'
+    OTHER = 'OTHER'
+
+    PACKAGE_TYPE_CHOICES = [
+        (HOUSEHOLD_ITEMS, 'Household Items'),
+        (OFFICE_EQUIPMENT, 'Office Equipment'),
+        (PARCEL, 'Parcel'),
+        (FRAGILE, 'Fragile'),
+        (FOOD, 'Food'),
+        (OTHER, 'Other'),
+    ]
+
+    package_type = models.CharField(
+        max_length=30,
+        choices=PACKAGE_TYPE_CHOICES,
+        default=PARCEL
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
