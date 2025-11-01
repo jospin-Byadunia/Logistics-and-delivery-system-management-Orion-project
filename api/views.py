@@ -193,6 +193,7 @@ class AssignmentViewSet(viewsets.ModelViewSet):
         # Update delivery request status
         delivery = assignment.delivery_request
         delivery.status = DeliveryRequest.COMPLETED
+        delivery.is_paid = True  # Assuming payment is done upon completion
         delivery.save()
 
         return Response({'detail': 'Delivery marked as completed successfully.'}, status=status.HTTP_200_OK)
@@ -204,6 +205,7 @@ class AssignmentViewSet(viewsets.ModelViewSet):
 class PaymentViewSet(viewsets.ModelViewSet):
     queryset = Payment.objects.all()
     serializer_class = PaymentSerializer
+    permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         delivery_request_id = request.data.get('delivery_request')
@@ -224,7 +226,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
             payment_method=payment_method,
         )
 
-        if payment_method in [Payment.CARD, Payment.MOBILE_MONEY]:
+        if payment_method in [Payment.CARD, Payment.MOBILE_MONEY, Payment.PAYPAL]:
             # Here you integrate with Flutterwave or other payment API
             # Example: get payment link and return
             payment_link = f"https://pay.example.com/{payment.id}"  # placeholder

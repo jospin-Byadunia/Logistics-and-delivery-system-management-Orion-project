@@ -49,7 +49,7 @@ class DeliveryRequestSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'customer', 'pickup_address', 'dropoff_address', 'package_type',
             'pickup_lat', 'pickup_lng', 'dropoff_lat', 'dropoff_lng',
-            'distance_km', 'price', 'status', 'created_at', 'updated_at'
+            'distance_km', 'price', 'status', 'created_at', 'updated_at','is_paid'
         ]
         read_only_fields = ['id', 'distance_km', 'price', 'created_at', 'updated_at', 'customer']
     # def create(self, validated_data):

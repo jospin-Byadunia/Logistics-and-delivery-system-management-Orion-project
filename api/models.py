@@ -149,11 +149,13 @@ class Payment(models.Model):
     CARD = 'CARD'
     MOBILE_MONEY = 'MOBILE_MONEY'
     PAYPAL = 'PAYPAL'
+    ON_DELIVERY = 'ON_DELIVERY'
     
     PAYMENT_METHOD_CHOICES = [
         (CARD, 'Card'),
         (MOBILE_MONEY, 'Mobile Money'),
         (PAYPAL, 'PayPal'),
+        (ON_DELIVERY, 'On Delivery'),
     ]
 
     # Payment status choices
