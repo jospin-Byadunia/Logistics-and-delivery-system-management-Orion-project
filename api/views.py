@@ -284,7 +284,11 @@ class LogoutView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response({"detail": "Successfully logged out."}, status=status.HTTP_200_OK)
+
+        response = Response({"detail": "Successfully logged out."}, status=status.HTTP_200_OK)
+        response.delete_cookie("access_token")
+        response.delete_cookie("refresh_token")
+        return response
         
 class ForgotPasswordView(APIView):
     permission_classes = [AllowAny]
@@ -310,3 +314,35 @@ class ForgotPasswordView(APIView):
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        access_token = data.get("access")
+        refresh_token = data.get("refresh")
+
+        response = Response(
+            {"message": "Login successful"},
+            status=status.HTTP_200_OK
+        )
+
+        # Store JWTs in HttpOnly cookies
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            secure=False,  
+            samesite="Lax",
+            max_age=60 * 60 * 2,  # 2 hour
+        )
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            httponly=True,
+            secure=False,
+            samesite="Lax",
+            max_age=7 * 24 * 60 * 60,  # 7 days
+        )
+
+        return response
