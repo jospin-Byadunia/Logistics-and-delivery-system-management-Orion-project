@@ -29,6 +29,16 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
     def create(self, validated_data):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            current_user = request.user
+        else:
+            current_user = None
+        # If the request is not from an admin, force role = CUSTOMER
+        if not (current_user or current_user.role != User.ADMIN):
+            validated_data['role'] = User.CUSTOMER
+        else:
+            pass  # keep the role as provided
         password = validated_data.pop('password')
         user = User.objects.create_user(**validated_data)
         user.set_password(password)
@@ -123,6 +133,12 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
+        request = self.context.get('request')
+        current_user = request.user if request and request.user.is_authenticated else None
+
+        # If the request is not from an admin, force role = CUSTOMER
+        if not current_user or current_user.role != User.ADMIN:
+            validated_data['role'] = User.CUSTOMER
         validated_data.pop('password2')
         user = User.objects.create_user(**validated_data)
         return user

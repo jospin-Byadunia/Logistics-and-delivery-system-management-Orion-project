@@ -35,11 +35,15 @@ class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
 
     def get_permissions(self):
-        if self.action == 'create':  # registration
-            return [permissions.AllowAny()]
-        return [permissions.IsAuthenticated()]
-    
+        # only admin can register admin and driver users
+        if self.action == 'create':
+            if self.request.user.is_authenticated and ( self.request.user.role == User.ADMIN or self.request.user.role == User.DRIVER):
+                return [permissions.IsAuthenticated()]
+        return [permissions.IsAdminUser()]
     def get_queryset(self): # Optionally filter by role
+        # only admin can filter users by role
+        if self.request.user.role != User.ADMIN:
+            return User.objects.none()
         role = self.request.query_params.get('role') 
         if role: 
             return User.objects.filter(role=role) 
@@ -275,7 +279,11 @@ class TrackingViewSet(viewsets.ModelViewSet):
 class RegisterViewSet(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
-    permission_classes = [permissions.AllowAny]
+    def get_permissions(self):
+        if self.request.user.is_authenticated and self.request.user.role == User.ADMIN:
+            return [permissions.IsAuthenticated()]
+        return [permissions.AllowAny()]
+    
 class LogoutView(generics.GenericAPIView):
     serializer_class = LogoutSerializer
     permission_classes = [permissions.IsAuthenticated]
