@@ -292,6 +292,16 @@ class LogoutView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        refresh_token = request.data.get("refresh") or request.COOKIES.get("refresh_token")
+
+        if not refresh_token:
+            return Response({"error": "Refresh token missing."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         response = Response({"detail": "Successfully logged out."}, status=status.HTTP_200_OK)
         response.delete_cookie("access_token")
@@ -352,5 +362,10 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             samesite="Lax",
             max_age=7 * 24 * 60 * 60,  # 7 days
         )
+        response.data = {
+            "access": access_token,
+            "refresh": refresh_token,
+            "detail": "Login successful."
+        }
 
         return response
