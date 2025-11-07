@@ -13,7 +13,11 @@ from .serializers import (
     DeliveryRequestSerializer,
     AssignmentSerializer,
     PaymentSerializer,
-    TrackingSerializer, RegisterSerializer, CustomTokenObtainPairSerializer, LogoutSerializer
+    TrackingSerializer, 
+    RegisterSerializer, 
+    CustomTokenObtainPairSerializer, 
+    LogoutSerializer,
+    ProfileSerializer
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -369,3 +373,23 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         }
 
         return response
+    
+# Profile ViewSet can be added similarly
+class ProfileViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = User.objects.all()
+    serializer_class = ProfileSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return User.objects.filter(id=self.request.user.id)
+    #update profile info
+    @action(detail=True,
+    methods=['patch'],
+    url_path='profile',
+    permission_classes=[IsAuthenticated])
+    def me(self, request, pk=None):
+        user = self.get_object()
+        serializer = self.get_serializer(user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)

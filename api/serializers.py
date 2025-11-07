@@ -219,3 +219,10 @@ class LogoutSerializer(serializers.Serializer):
 #         token = default_token_generator.make_token(user)
 #         # In a real application, send the token to the user's email
 #         return token
+
+# profile serializers can be added similarly
+class ProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'role', 'phone_number', 'address', 'vehicle_number']
+        read_only_fields = ['id', 'username', 'email', 'role']

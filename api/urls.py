@@ -5,7 +5,7 @@ from .views import (
     DeliveryRequestViewSet,
     AssignmentViewSet,
     PaymentViewSet,
-    TrackingViewSet, RegisterViewSet, LogoutView, ForgotPasswordView, CustomTokenObtainPairView
+    TrackingViewSet, RegisterViewSet, LogoutView, ForgotPasswordView, CustomTokenObtainPairView, ProfileViewSet
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
@@ -22,6 +22,11 @@ urlpatterns = [
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('logout/', LogoutView.as_view(), name='logout'),
     path('forgot-password/', ForgotPasswordView.as_view(), name='forgot_password'),
+    path('profile/', ProfileViewSet.as_view({'get': 'list'}), name='profile'),
+    #update profile can be added similarly
+    path('profile/<int:pk>/', ProfileViewSet.as_view({'patch': 'me'}), name='update-profile'),
+    
+        
      # Custom routes for assignment actions
     path('deliveries/<int:pk>/assign/', AssignmentViewSet.as_view({'post': 'assign_driver'}), name='assign-driver'),
     path('assignments/<int:pk>/accept/', AssignmentViewSet.as_view({'patch': 'accept'}), name='accept-assignment'),
