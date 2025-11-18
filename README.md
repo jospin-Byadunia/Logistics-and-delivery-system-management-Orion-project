@@ -18,7 +18,7 @@ This project streamlines order creation, assignment, delivery tracking, and paym
 ---
 ## Project structure
 ```bash
-orion_api/
+delivery-management-api/
 │
 ├── manage.py
 ├── requirements.txt
